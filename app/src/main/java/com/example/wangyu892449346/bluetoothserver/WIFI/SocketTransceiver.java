@@ -10,13 +10,13 @@ import java.net.Socket;
 
 /**
  * Created by wangyu on 17-7-19.
+ * 这是ＴＣＰ的抽象类
  */
-
 public abstract class SocketTransceiver implements Runnable {
     protected Socket socket;
     protected InetAddress addr;
-    protected DataInputStream in;
-    protected DataOutputStream out;
+    protected DataInputStream in;// 数据读取
+    protected DataOutputStream out;// 数据写入
     private boolean runFlag;
 
     /**

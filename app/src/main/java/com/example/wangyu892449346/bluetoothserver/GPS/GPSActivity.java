@@ -9,6 +9,7 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.fastaccess.permission.base.PermissionHelper;
 import com.fastaccess.permission.base.callback.OnPermissionCallback;
@@ -165,7 +166,6 @@ public class GPSActivity extends AppCompatActivity implements OnPermissionCallba
                 (GPSActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             mPermissionHelper.request(MULTI_PERMISSIONS);
-            return;
         }
     }
 

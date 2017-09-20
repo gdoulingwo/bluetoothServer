@@ -1,8 +1,11 @@
 package com.example.wangyu892449346.bluetoothserver.Activity;
 
 import android.content.Intent;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -38,6 +41,7 @@ import java.net.SocketException;
 import java.util.Enumeration;
 import java.util.List;
 
+@SuppressWarnings("ALL")// 用于抑制编译器产生警告信息。
 public class MainActivity extends BluetoothActivity
         implements NavigationView.OnNavigationItemSelectedListener, View.OnClickListener {
 
@@ -66,6 +70,9 @@ public class MainActivity extends BluetoothActivity
     private Button server_confirm;
     private android.support.v7.widget.AppCompatTextView serverIP;
     private MyHandler myHandler;
+    private Vibrator vibrator;
+    private SoundPool soundPool;
+    private int hit;
 
     private GPSListener gpsListener = new GPSListener() {
         @Override// 当获取到经度的时候回调
@@ -137,55 +144,44 @@ public class MainActivity extends BluetoothActivity
 
             @Override
             public void onConnect(SocketTransceiver client) {
-                Message message = Message.obtain();
-                message.what = 1;
-                message.obj = "Client " + client.getInetAddress().getHostAddress() + " connect.";
-                myHandler.sendMessage(message);
+                sendMsg(1, "Client " + client.getInetAddress().getHostAddress() + " connect.");
             }
 
             @Override
             public void onConnectFailed() {
-                Message message = Message.obtain();
-                message.what = 1;
-                message.obj = "Client Connect Failed.";
-                myHandler.sendMessage(message);
+                sendMsg(1, "Client Connect Failed.");
             }
 
             @Override
             public void onReceive(SocketTransceiver client, String s) {
-                Message message = Message.obtain();
-                message.what = 2;
-                message.obj = s;
-                myHandler.sendMessage(message);
+                sendMsg(2, s);
                 // client.send(s);
                 // Log.i("get", s);
             }
 
             @Override
             public void onDisconnect(SocketTransceiver client) {
-                Message message = Message.obtain();
-                message.what = 1;
-                message.obj = "Client " + client.getInetAddress().getHostAddress() + " disconnect.";
-                myHandler.sendMessage(message);
+                sendMsg(1, "Client " + client.getInetAddress().getHostAddress() + " disconnect.");
             }
 
             @Override
             public void onServerStop() {
-                Message message = Message.obtain();
-                message.what = 1;
-                message.obj = "TCP server stop.";
-                myHandler.sendMessage(message);
+                sendMsg(1, "TCP server stop.");
             }
         };
-        Message message = Message.obtain();
-        message.what = 1;
-        message.obj = "TCP server start.";
-        myHandler.sendMessage(message);
+        sendMsg(1, "TCP server start.");
         server.start();
     }
 
     private void startClient() {
 
+    }
+
+    public void sendMsg(int what, String obj) {
+        Message message = Message.obtain();
+        message.what = what;
+        message.obj = obj;
+        myHandler.sendMessage(message);
     }
 
     @Override
@@ -259,6 +255,11 @@ public class MainActivity extends BluetoothActivity
         serverIP.setText(temp);
 
         myHandler = new MyHandler(this);
+
+        vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+
+        soundPool = new SoundPool(2, AudioManager.STREAM_MUSIC, 100);
+        hit = soundPool.load(this, R.raw.sound, 1);
     }
 
     @Override
@@ -299,6 +300,7 @@ public class MainActivity extends BluetoothActivity
                 disConnect();//中断连接
                 break;
             case R.id.gps:
+                showToast("GPS");
                 this.startGPS();
                 break;
             case R.id.TcpClient:
@@ -368,6 +370,7 @@ public class MainActivity extends BluetoothActivity
     private void setNavTextStatus(int angle, TextView tv) {
         if (dataUtil.isNavOverStep(angle)) {
             tv.setBackgroundColor(this.getResources().getColor(R.color.colorAccent));
+            playSound();
         } else {
             tv.setBackgroundColor(this.getResources().getColor(R.color.white));
         }
@@ -383,6 +386,7 @@ public class MainActivity extends BluetoothActivity
     private void setGasTextStatus(double gas, TextView tv) {
         if (dataUtil.isOverEdge(gas)) {
             tv.setBackgroundColor(this.getResources().getColor(R.color.colorAccent));
+            playSound();
         } else {
             tv.setBackgroundColor(this.getResources().getColor(R.color.white));
         }
@@ -398,6 +402,7 @@ public class MainActivity extends BluetoothActivity
     private void setPitchTextStatus(int angle, TextView tv) {
         if (dataUtil.isPitchOverStep(angle)) {
             tv.setBackgroundColor(this.getResources().getColor(R.color.colorAccent));
+            playSound();
         } else {
             tv.setBackgroundColor(this.getResources().getColor(R.color.white));
         }
@@ -413,10 +418,19 @@ public class MainActivity extends BluetoothActivity
     private void setYawTextStatus(int angle, TextView tv) {
         if (dataUtil.isYawOverStep(angle)) {
             tv.setBackgroundColor(this.getResources().getColor(R.color.colorAccent));
+            playSound();
         } else {
             tv.setBackgroundColor(this.getResources().getColor(R.color.white));
         }
         tv.setText(String.valueOf(angle));
+    }
+
+    private void playSound() {
+        if (hit == 0) {
+            hit = soundPool.load(this, R.raw.sound, 0);
+        }
+        soundPool.play(hit, 9, 9, 0, 5, (float) 1);
+        vibrator.vibrate(new long[]{100, 2000, 500, 2500}, -1);
     }
 
     /**
@@ -453,11 +467,29 @@ public class MainActivity extends BluetoothActivity
 
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        soundPool.release();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        soundPool.resume(R.raw.sound);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        soundPool.stop(R.raw.sound);
+    }
+
     private class MyHandler extends android.os.Handler {
         private final WeakReference<MainActivity> mActivity;
 
         MyHandler(MainActivity activity) {
-            mActivity = new WeakReference<MainActivity>(activity);
+            mActivity = new WeakReference<>(activity);
         }
 
         @Override
